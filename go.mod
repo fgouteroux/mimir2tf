@@ -1,6 +1,6 @@
 module github.com/fgouteroux/mimir2tf
 
-go 1.17
+go 1.18
 
 require (
 	github.com/grafana/mimir v0.0.0-20221003143548-82238329fea2
