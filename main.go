@@ -90,7 +90,7 @@ func main() {
 				ruleExpr := strings.TrimSuffix(rule.Expr.Value, "\n")
 				if strings.Contains(ruleExpr, "\n") {
 					resource += fmt.Sprintf("expr  = <<EOT\n%s\nEOT\n", ruleExpr)
-				} else if strings.Contains(ruleExpr, "\""){
+				} else if strings.Contains(ruleExpr, "\"") {
 					resource += fmt.Sprintf("expr  = \"%s\"\n", strings.ReplaceAll(ruleExpr, "\"", "\\\""))
 				} else {
 					resource += fmt.Sprintf("expr  = \"%s\"\n", ruleExpr)
@@ -108,7 +108,15 @@ func main() {
 				if len(rule.Annotations) > 0 {
 					resource += fmt.Sprintf("annotations = {\n")
 					for aname, avalue := range rule.Annotations {
-						resource += fmt.Sprintf("%s = \"%s\"\n", aname, strings.ReplaceAll(avalue, "\"", "\\\""))
+
+						annotValue := strings.TrimSuffix(avalue, "\n")
+						if strings.Contains(annotValue, "\n") {
+							resource += fmt.Sprintf("%s = <<EOT\n%s\nEOT\n", aname, annotValue)
+						} else if strings.Contains(annotValue, "\"") {
+							resource += fmt.Sprintf("%s = \"%s\"\n", aname, strings.ReplaceAll(annotValue, "\"", "\\\""))
+						} else {
+							resource += fmt.Sprintf("%s = \"%s\"\n", aname, strings.ReplaceAll(annotValue, "\"", "\\\""))
+						}
 					}
 					resource += fmt.Sprintf("}\n")
 				}
@@ -127,7 +135,7 @@ func main() {
 			var recordingRule bool
 			var resource string
 			resource = fmt.Sprintf("resource \"mimir_rule_group_recording\" \"%s\" {\n", group.Name)
-			resource += fmt.Sprintf("name      = \"%s\"\n", group.Name)
+			resource += fmt.Sprintf("name = \"%s\"\n", group.Name)
 			if obj.Namespace != "" {
 				resource += fmt.Sprintf("namespace = \"%s\"\n", obj.Namespace)
 			}
@@ -143,11 +151,11 @@ func main() {
 				resource += fmt.Sprintf("record = \"%s\"\n", ruleName)
 				ruleExpr := strings.TrimSuffix(rule.Expr.Value, "\n")
 				if strings.Contains(ruleExpr, "\n") {
-					resource += fmt.Sprintf("expr  = <<EOT\n%s\nEOT\n", ruleExpr)
-				} else if strings.Contains(ruleExpr, "\""){
-					resource += fmt.Sprintf("expr  = \"%s\"\n", strings.ReplaceAll(ruleExpr, "\"", "\\\""))
+					resource += fmt.Sprintf("expr = <<EOT\n%s\nEOT\n", ruleExpr)
+				} else if strings.Contains(ruleExpr, "\"") {
+					resource += fmt.Sprintf("expr = \"%s\"\n", strings.ReplaceAll(ruleExpr, "\"", "\\\""))
 				} else {
-					resource += fmt.Sprintf("expr  = \"%s\"\n", ruleExpr)
+					resource += fmt.Sprintf("expr = \"%s\"\n", ruleExpr)
 				}
 				resource += fmt.Sprintf("}\n")
 			}
