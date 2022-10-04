@@ -90,6 +90,8 @@ func main() {
 				ruleExpr := strings.TrimSuffix(rule.Expr.Value, "\n")
 				if strings.Contains(ruleExpr, "\n") {
 					resource += fmt.Sprintf("expr  = <<EOT\n%s\nEOT\n", ruleExpr)
+				} else if strings.Contains(ruleExpr, "\""){
+					resource += fmt.Sprintf("expr  = \"%s\"\n", strings.ReplaceAll(ruleExpr, "\"", "\\\""))
 				} else {
 					resource += fmt.Sprintf("expr  = \"%s\"\n", ruleExpr)
 				}
@@ -106,7 +108,7 @@ func main() {
 				if len(rule.Annotations) > 0 {
 					resource += fmt.Sprintf("annotations = {\n")
 					for aname, avalue := range rule.Annotations {
-						resource += fmt.Sprintf("%s = \"%s\"\n", aname, avalue)
+						resource += fmt.Sprintf("%s = \"%s\"\n", aname, strings.ReplaceAll(avalue, "\"", "\\\""))
 					}
 					resource += fmt.Sprintf("}\n")
 				}
@@ -142,6 +144,8 @@ func main() {
 				ruleExpr := strings.TrimSuffix(rule.Expr.Value, "\n")
 				if strings.Contains(ruleExpr, "\n") {
 					resource += fmt.Sprintf("expr  = <<EOT\n%s\nEOT\n", ruleExpr)
+				} else if strings.Contains(ruleExpr, "\""){
+					resource += fmt.Sprintf("expr  = \"%s\"\n", strings.ReplaceAll(ruleExpr, "\"", "\\\""))
 				} else {
 					resource += fmt.Sprintf("expr  = \"%s\"\n", ruleExpr)
 				}
