@@ -157,6 +157,13 @@ func main() {
 				} else {
 					resource += fmt.Sprintf("expr = \"%s\"\n", ruleExpr)
 				}
+				if len(rule.Labels) > 0 {
+					resource += fmt.Sprintf("labels = {\n")
+					for lname, lvalue := range rule.Labels {
+						resource += fmt.Sprintf("%s = \"%s\"\n", lname, lvalue)
+					}
+					resource += fmt.Sprintf("}\n")
+				}
 				resource += fmt.Sprintf("}\n")
 			}
 			resource += fmt.Sprintf("}\n")

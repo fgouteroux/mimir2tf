@@ -560,6 +560,11 @@ ceil(
   / 240000
 )
 EOT
+
+    labels = {
+      deployment = "distributor"
+      reason     = "sample_rate"
+    }
   }
 
   rule {
@@ -571,6 +576,11 @@ ceil(
   * 0.59999999999999998 / 240000
 )
 EOT
+
+    labels = {
+      deployment = "distributor"
+      reason     = "sample_rate_limits"
+    }
   }
 
   rule {
@@ -586,6 +596,11 @@ ceil(
   * 3 / 80000
 )
 EOT
+
+    labels = {
+      deployment = "ingester"
+      reason     = "sample_rate"
+    }
   }
 
   rule {
@@ -601,6 +616,11 @@ ceil(
   / 1500000
 )
 EOT
+
+    labels = {
+      deployment = "ingester"
+      reason     = "active_series"
+    }
   }
 
   rule {
@@ -612,6 +632,11 @@ ceil(
   * 3 * 0.59999999999999998 / 1500000
 )
 EOT
+
+    labels = {
+      deployment = "ingester"
+      reason     = "active_series_limits"
+    }
   }
 
   rule {
@@ -623,6 +648,11 @@ ceil(
   * 0.59999999999999998 / 80000
 )
 EOT
+
+    labels = {
+      deployment = "ingester"
+      reason     = "sample_rate_limits"
+    }
   }
 
   rule {
@@ -639,6 +669,11 @@ ceil(
   )
 )
 EOT
+
+    labels = {
+      deployment = "memcached"
+      reason     = "active_series"
+    }
   }
 
   rule {
@@ -714,6 +749,10 @@ ceil(
   cluster_namespace_deployment:kube_pod_container_resource_requests_cpu_cores:sum
 )
 EOT
+
+    labels = {
+      reason = "cpu_usage"
+    }
   }
 
   rule {
@@ -789,6 +828,10 @@ ceil(
   cluster_namespace_deployment:kube_pod_container_resource_requests_memory_bytes:sum
 )
 EOT
+
+    labels = {
+      reason = "memory_usage"
+    }
   }
 }
 
