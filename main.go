@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	flag "github.com/spf13/pflag"
@@ -32,6 +33,7 @@ var (
 	overwriteExisting bool
 	tf12format        bool
 	printVersion      bool
+	reverse           bool
 )
 
 func init() {
@@ -42,6 +44,7 @@ func init() {
 	flag.BoolVarP(&overwriteExisting, "overwrite-existing", "x", false, "allow overwriting existing output file(s)")
 	flag.BoolVarP(&tf12format, "tf12format", "F", false, `Use Terraform 0.12 formatter`)
 	flag.BoolVarP(&printVersion, "version", "v", false, `Print mimir2tf version`)
+	flag.BoolVarP(&reverse, "reverse", "r", false, `Reverse mode (hcl to yaml)`)
 
 	flag.Parse()
 
@@ -60,10 +63,92 @@ func main() {
 		Str("builddate", date).
 		Msg("starting mimir2tf")
 
-	objs := ReadInput(input)
-
 	w, closer := SetupOutput(output, overwriteExisting)
 	defer closer()
+
+	if reverse {
+		objs := ReadHCLInput(input)
+		content := "groups:\n"
+		for _, obj := range objs {
+			for key, value := range obj["resource"].(map[string]interface{}) {
+				if key == "mimir_rule_group_alerting" {
+					for _, alertgroups := range value.(map[string]interface{}) {
+						for _, alertgroup := range alertgroups.([]interface{}) {
+							content += fmt.Sprintf("- name: %s\n  rules:\n", alertgroup.(map[string]interface{})["name"].(string))
+							rules := alertgroup.(map[string]interface{})["rule"].([]interface{})
+							for _, rule := range rules {
+								content += fmt.Sprintf("  - alert: %s\n", rule.(map[string]interface{})["alert"].(string))
+								expr := rule.(map[string]interface{})["expr"].(string)
+								if strings.Contains(expr, "\n") {
+									content += fmt.Sprintf("    expr: |\n")
+									for _, line := range strings.Split(expr, "\n") {
+										content += fmt.Sprintf("      %s\n", line)
+									}
+								} else {
+									content += fmt.Sprintf("    expr: %s\n", expr)
+								}
+								if _, ok := rule.(map[string]interface{})["for"]; ok {
+									content += fmt.Sprintf("    for: %s\n", rule.(map[string]interface{})["for"].(string))
+								}
+								if _, ok := rule.(map[string]interface{})["labels"]; ok {
+									labels := rule.(map[string]interface{})["labels"].(map[string]interface{})
+									if len(labels) > 0 {
+										content += fmt.Sprintf("    labels:\n")
+										for lname, lvalue := range labels {
+											content += fmt.Sprintf("      %s: %s\n", lname, lvalue)
+										}
+									}
+								}
+								if _, ok := rule.(map[string]interface{})["annotations"]; ok {
+									annotations := rule.(map[string]interface{})["annotations"].(map[string]interface{})
+									if len(annotations) > 0 {
+										content += fmt.Sprintf("    annotations:\n")
+										for aname, avalue := range annotations {
+											content += fmt.Sprintf("      %s: %s\n", aname, strconv.Quote(avalue.(string)))
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				if key == "mimir_rule_group_recording" {
+					for _, recordgroups := range value.(map[string]interface{}) {
+						for _, recordgroup := range recordgroups.([]interface{}) {
+							content += fmt.Sprintf("- name: %s\n  rules:\n", recordgroup.(map[string]interface{})["name"].(string))
+							rules := recordgroup.(map[string]interface{})["rule"].([]interface{})
+							for _, rule := range rules {
+								content += fmt.Sprintf("  - record: %s\n", rule.(map[string]interface{})["record"].(string))
+								expr := rule.(map[string]interface{})["expr"].(string)
+								if strings.Contains(expr, "\n") {
+									content += fmt.Sprintf("    expr: |\n")
+									for _, line := range strings.Split(expr, "\n") {
+										content += fmt.Sprintf("      %s\n", line)
+									}
+								} else {
+									content += fmt.Sprintf("    expr: %s\n", expr)
+								}
+								if _, ok := rule.(map[string]interface{})["labels"]; ok {
+									labels := rule.(map[string]interface{})["labels"].(map[string]interface{})
+									if len(labels) > 0 {
+										content += fmt.Sprintf("    labels:\n")
+										for lname, lvalue := range labels {
+											content += fmt.Sprintf("      %s: %s\n", lname, lvalue)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		fmt.Fprint(w, content)
+		fmt.Fprintln(w)
+		os.Exit(0)
+	}
+
+	objs := ReadYAMLInput(input)
 
 	var resources []string
 

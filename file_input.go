@@ -6,6 +6,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,14 +18,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func ReadInput(input string) []rules.RuleNamespace {
+func ReadYAMLInput(input string) []rules.RuleNamespace {
 	if input == "-" || input == "" {
-		return readStdinInput(input)
+		return readYAMLStdinInput(input)
 	}
-	return readFilesInput(input)
+	return readYAMLFilesInput(input)
 }
 
-func readStdinInput(input string) []rules.RuleNamespace {
+func readYAMLStdinInput(input string) []rules.RuleNamespace {
 	info, err := os.Stdin.Stat()
 	if err != nil {
 		panic(err)
@@ -46,7 +48,7 @@ func readStdinInput(input string) []rules.RuleNamespace {
 
 }
 
-func readFilesInput(input string) []rules.RuleNamespace {
+func readYAMLFilesInput(input string) []rules.RuleNamespace {
 	var objs []rules.RuleNamespace
 
 	if _, err := os.Stat(input); os.IsNotExist(err) {
@@ -63,7 +65,7 @@ func readFilesInput(input string) []rules.RuleNamespace {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	readFile := func(fileName string) {
+	readYamlFile := func(fileName string) {
 		log.Debug().Msgf("reading file: %s", fileName)
 		content, err := ioutil.ReadFile(fileName)
 		if err != nil {
@@ -91,13 +93,112 @@ func readFilesInput(input string) []rules.RuleNamespace {
 
 		for _, f := range dirContents {
 			if strings.HasSuffix(f, ".yml") || strings.HasSuffix(f, ".yaml") {
-				readFile(filepath.Join(input, f))
+				readYamlFile(filepath.Join(input, f))
 			}
 		}
 
 	} else {
 		// read single file
-		readFile(input)
+		readYamlFile(input)
+
+	}
+
+	return objs
+}
+
+func ReadHCLInput(input string) []map[string]interface{} {
+	if input == "-" || input == "" {
+		return readHCLStdinInput(input)
+	}
+	return readHCLFilesInput(input)
+}
+
+func readHCLStdinInput(input string) []map[string]interface{} {
+	info, err := os.Stdin.Stat()
+	if err != nil {
+		panic(err)
+	}
+
+	if info.Mode()&os.ModeCharDevice != 0 {
+		log.Fatal().Msg("No data read from stdin")
+	}
+
+	buffer := bytes.NewBuffer([]byte{})
+	var stream io.Reader
+	_, err = buffer.ReadFrom(stream)
+
+	dataBytes, err := Bytes(buffer.Bytes(), "STDIN")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not parse stdin")
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(dataBytes, &data)
+	if err != nil {
+		log.Warn().Err(err).Msgf("could not unmarshal")
+	}
+
+	return []map[string]interface{}{data}
+
+}
+
+func readHCLFilesInput(input string) []map[string]interface{} {
+	var objs []map[string]interface{}
+
+	if _, err := os.Stat(input); os.IsNotExist(err) {
+		log.Fatal().Str("file", input).Msg("input filepath does not exist")
+	}
+
+	file, err := os.Open(input)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
+
+	fs, err := file.Stat()
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
+
+	readHCLFile := func(fileName string) {
+		log.Debug().Msgf("reading file: %s", fileName)
+		content, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			log.Fatal().Err(err).Msg("could not read file")
+		}
+
+		r := bytes.NewReader(content)
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+
+		dataBytes, err := Bytes(buf.Bytes(), "STDIN")
+		if err != nil {
+			log.Warn().Err(err).Msgf("could not parse file %s", fileName)
+		}
+		var obj map[string]interface{}
+		err = json.Unmarshal(dataBytes, &obj)
+		if err != nil {
+			log.Warn().Err(err).Msgf("could not unmarshal file %s", fileName)
+		}
+		objs = append(objs, obj)
+	}
+
+	if fs.Mode().IsDir() {
+		// read directory
+		log.Debug().Msgf("reading directory: %s", input)
+
+		dirContents, err := file.Readdirnames(0)
+		if err != nil {
+			log.Fatal().Err(err).Msg("")
+		}
+
+		for _, f := range dirContents {
+			if strings.HasSuffix(f, ".tf") {
+				readHCLFile(filepath.Join(input, f))
+			}
+		}
+
+	} else {
+		// read single file
+		readHCLFile(input)
 
 	}
 

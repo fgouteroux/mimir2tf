@@ -11,7 +11,8 @@ resource "mimir_rule_group_alerting" "mimir_alerts" {
     }
 
     annotations = {
-      message = "Mimir cluster {{ $labels.cluster }}/{{ $labels.namespace }} has {{ printf \"%f\" $value }} unhealthy ingester(s)."
+      message     = "Mimir cluster {{ $labels.cluster }}/{{ $labels.namespace }} has {{ printf \"%f\" $value }} unhealthy ingester(s)."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterunhealthy"
     }
   }
 
@@ -32,7 +33,8 @@ EOT
     }
 
     annotations = {
-      message = "The route {{ $labels.route }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors."
+      message     = "The route {{ $labels.route }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrequesterrors"
     }
   }
 
@@ -52,7 +54,8 @@ EOT
     }
 
     annotations = {
-      message = "{{ $labels.job }} {{ $labels.route }} is experiencing {{ printf \"%.2f\" $value }}s 99th percentile latency."
+      message     = "{{ $labels.job }} {{ $labels.route }} is experiencing {{ printf \"%.2f\" $value }}s 99th percentile latency."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrequestlatency"
     }
   }
 
@@ -72,7 +75,8 @@ EOT
     }
 
     annotations = {
-      message = "The Mimir cluster {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% incorrect query results."
+      message     = "The Mimir cluster {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% incorrect query results."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirqueriesincorrect"
     }
   }
 
@@ -86,7 +90,8 @@ EOT
     }
 
     annotations = {
-      message = "An inconsistent runtime config file is used across cluster {{ $labels.cluster }}/{{ $labels.namespace }}."
+      message     = "An inconsistent runtime config file is used across cluster {{ $labels.cluster }}/{{ $labels.namespace }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirinconsistentruntimeconfig"
     }
   }
 
@@ -105,7 +110,8 @@ EOT
     }
 
     annotations = {
-      message = "{{ $labels.job }} failed to reload runtime config."
+      message     = "{{ $labels.job }} failed to reload runtime config."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirbadruntimeconfig"
     }
   }
 
@@ -119,31 +125,42 @@ EOT
     }
 
     annotations = {
-      message = "There are {{ $value }} queued up queries in {{ $labels.cluster }}/{{ $labels.namespace }} {{ $labels.job }}."
+      message     = "There are {{ $value }} queued up queries in {{ $labels.cluster }}/{{ $labels.namespace }} {{ $labels.job }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirfrontendqueriesstuck"
     }
   }
 
   rule {
     alert = "MimirSchedulerQueriesStuck"
     expr  = "sum by (cluster, namespace, job) (min_over_time(cortex_query_scheduler_queue_length[1m])) > 0"
-    for   = "5m"
+    for   = "7m"
 
     labels = {
       severity = "critical"
     }
 
     annotations = {
-      message = "There are {{ $value }} queued up queries in {{ $labels.cluster }}/{{ $labels.namespace }} {{ $labels.job }}."
+      message     = "There are {{ $value }} queued up queries in {{ $labels.cluster }}/{{ $labels.namespace }} {{ $labels.job }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirschedulerqueriesstuck"
     }
   }
 
   rule {
-    alert = "MimirMemcachedRequestErrors"
+    alert = "MimirCacheRequestErrors"
 
     expr = <<EOT
 (
-  sum by(cluster, namespace, name, operation) (rate(thanos_memcached_operation_failures_total[1m])) /
-  sum by(cluster, namespace, name, operation) (rate(thanos_memcached_operations_total[1m]))
+  sum by(cluster, namespace, name, operation) (
+    rate(thanos_memcached_operation_failures_total[1m])
+    or
+    rate(thanos_cache_operation_failures_total[1m])
+  )
+  /
+  sum by(cluster, namespace, name, operation) (
+    rate(thanos_memcached_operations_total[1m])
+    or
+    rate(thanos_cache_operations_total[1m])
+  )
 ) * 100 > 5
 EOT
 
@@ -154,20 +171,22 @@ EOT
     }
 
     annotations = {
-      message = "Memcached {{ $labels.name }} used by Mimir {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors for {{ $labels.operation }} operation."
+      message     = "The cache {{ $labels.name }} used by Mimir {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors for {{ $labels.operation }} operation."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircacherequesterrors"
     }
   }
 
   rule {
     alert = "MimirIngesterRestarts"
-    expr  = "changes(process_start_time_seconds{job=~\".+(cortex|ingester.*)\"}[30m]) >= 2"
+    expr  = "changes(process_start_time_seconds{job=~\".*/(ingester.*|cortex|mimir|mimir-write.*)\"}[30m]) >= 2"
 
     labels = {
       severity = "warning"
     }
 
     annotations = {
-      message = "{{ $labels.job }}/{{ $labels.pod }} has restarted {{ printf \"%.2f\" $value }} times in the last 30 mins."
+      message     = "{{ $labels.job }}/{{ $labels.pod }} has restarted {{ printf \"%.2f\" $value }} times in the last 30 mins."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterrestarts"
     }
   }
 
@@ -191,13 +210,14 @@ EOT
     }
 
     annotations = {
-      message = "Mimir {{ $labels.pod }} in  {{ $labels.cluster }}/{{ $labels.namespace }} is failing to talk to the KV store {{ $labels.kv_name }}."
+      message     = "Mimir {{ $labels.pod }} in  {{ $labels.cluster }}/{{ $labels.namespace }} is failing to talk to the KV store {{ $labels.kv_name }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirkvstorefailure"
     }
   }
 
   rule {
     alert = "MimirMemoryMapAreasTooHigh"
-    expr  = "process_memory_map_areas{job=~\".+(cortex|ingester.*|store-gateway.*)\"} / process_memory_map_areas_limit{job=~\".+(cortex|ingester.*|store-gateway.*)\"} > 0.8"
+    expr  = "process_memory_map_areas{job=~\".*/(ingester.*|cortex|mimir|mimir-write.*|store-gateway.*|cortex|mimir|mimir-backend.*)\"} / process_memory_map_areas_limit{job=~\".*/(ingester.*|cortex|mimir|mimir-write.*|store-gateway.*|cortex|mimir|mimir-backend.*)\"} > 0.8"
     for   = "5m"
 
     labels = {
@@ -205,7 +225,109 @@ EOT
     }
 
     annotations = {
-      message = "{{ $labels.job }}/{{ $labels.pod }} has a number of mmap-ed areas close to the limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirmemorymapareastoohigh"
+      message     = "{{ $labels.job }}/{{ $labels.pod }} has a number of mmap-ed areas close to the limit."
+    }
+  }
+
+  rule {
+    alert = "MimirDistributorForwardingErrorRate"
+
+    expr = <<EOT
+sum by (cluster, namespace) (rate(cortex_distributor_forward_errors_total{}[1m]))
+/
+sum by (cluster, namespace) (rate(cortex_distributor_forward_requests_total{}[1m]))
+> 0.01
+EOT
+
+    for = "5m"
+
+    labels = {
+      severity = "critical"
+    }
+
+    annotations = {
+      message     = "Mimir in {{ $labels.cluster }}/{{ $labels.namespace }} has a high failure rate when forwarding samples."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirdistributorforwardingerrorrate"
+    }
+  }
+
+  rule {
+    alert = "MimirIngesterInstanceHasNoTenants"
+
+    expr = <<EOT
+(min by(cluster, namespace, pod) (cortex_ingester_memory_users) == 0)
+and on (cluster, namespace)
+# Only if there are more time-series than would be expected due to continuous testing load
+(
+  sum by(cluster, namespace) (cortex_ingester_memory_series)
+  /
+  max by(cluster, namespace) (cortex_distributor_replication_factor)
+) > 100000
+EOT
+
+    for = "1h"
+
+    labels = {
+      severity = "warning"
+    }
+
+    annotations = {
+      message     = "Mimir ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has no tenants assigned."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterinstancehasnotenants"
+    }
+  }
+
+  rule {
+    alert = "MimirRulerInstanceHasNoRuleGroups"
+
+    expr = <<EOT
+# Alert on ruler instances in microservices mode that have no rule groups assigned,
+min by(cluster, namespace, pod) (cortex_ruler_managers_total{pod=~"(.*mimir-)?ruler.*"}) == 0
+# but only if other ruler instances of the same cell do have rule groups assigned
+and on (cluster, namespace)
+(max by(cluster, namespace) (cortex_ruler_managers_total) > 0)
+# and there are more than two instances overall
+and on (cluster, namespace)
+(count by (cluster, namespace) (cortex_ruler_managers_total) > 2)
+EOT
+
+    for = "1h"
+
+    labels = {
+      severity = "warning"
+    }
+
+    annotations = {
+      message     = "Mimir ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has no rule groups assigned."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulerinstancehasnorulegroups"
+    }
+  }
+
+  rule {
+    alert = "MimirRingMembersMismatch"
+
+    expr = <<EOT
+(
+  avg by(cluster, namespace) (sum by(cluster, namespace, pod) (cortex_ring_members{name="ingester",job=~".*/(ingester.*|cortex|mimir|mimir-write.*)"}))
+  != sum by(cluster, namespace) (up{job=~".*/(ingester.*|cortex|mimir|mimir-write.*)"})
+)
+and
+(
+  count by(cluster, namespace) (cortex_build_info) > 0
+)
+EOT
+
+    for = "15m"
+
+    labels = {
+      component = "ingester"
+      severity  = "warning"
+    }
+
+    annotations = {
+      message     = "Number of members in Mimir ingester hash ring does not match the expected number in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirringmembersmismatch"
     }
   }
 }
@@ -231,7 +353,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its series limit."
+      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its series limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterreachingserieslimit"
     }
   }
 
@@ -253,7 +376,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its series limit."
+      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its series limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterreachingserieslimit"
     }
   }
 
@@ -275,7 +399,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
+      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterreachingtenantslimit"
     }
   }
 
@@ -297,7 +422,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
+      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterreachingtenantslimit"
     }
   }
 
@@ -316,7 +442,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir instance {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its TCP connections limit for {{ $labels.protocol }} protocol."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirreachingtcpconnectionslimit"
+      message     = "Mimir instance {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its TCP connections limit for {{ $labels.protocol }} protocol."
     }
   }
 
@@ -338,7 +465,8 @@ EOT
     }
 
     annotations = {
-      message = "Distributor {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its inflight push request limit."
+      message     = "Distributor {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its inflight push request limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirdistributorreachinginflightpushrequestlimit"
     }
   }
 }
@@ -377,7 +505,8 @@ EOT
     }
 
     annotations = {
-      message = "The {{ $labels.rollout_group }} rollout is stuck in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      message     = "The {{ $labels.rollout_group }} rollout is stuck in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrolloutstuck"
     }
   }
 
@@ -404,7 +533,8 @@ EOT
     }
 
     annotations = {
-      message = "The {{ $labels.rollout_group }} rollout is stuck in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      message     = "The {{ $labels.rollout_group }} rollout is stuck in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrolloutstuck"
     }
   }
 
@@ -418,7 +548,8 @@ EOT
     }
 
     annotations = {
-      message = "Rollout operator is not reconciling the rollout group {{ $labels.rollout_group }} in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      message     = "Rollout operator is not reconciling the rollout group {{ $labels.rollout_group }} in {{ $labels.cluster }}/{{ $labels.namespace }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#rolloutoperatornotreconciling"
     }
   }
 }
@@ -436,7 +567,8 @@ resource "mimir_rule_group_alerting" "mimir-provisioning" {
     }
 
     annotations = {
-      message = "The number of in-memory series per ingester in {{ $labels.cluster }}/{{ $labels.namespace }} is too high."
+      message     = "The number of in-memory series per ingester in {{ $labels.cluster }}/{{ $labels.namespace }} is too high."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirprovisioningtoomanyactiveseries"
     }
   }
 
@@ -450,7 +582,8 @@ resource "mimir_rule_group_alerting" "mimir-provisioning" {
     }
 
     annotations = {
-      message = "Ingesters in {{ $labels.cluster }}/{{ $labels.namespace }} ingest too many samples per second."
+      message     = "Ingesters in {{ $labels.cluster }}/{{ $labels.namespace }} ingest too many samples per second."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirprovisioningtoomanywrites"
     }
   }
 
@@ -461,9 +594,9 @@ resource "mimir_rule_group_alerting" "mimir-provisioning" {
 (
   # We use RSS instead of working set memory because of the ingester's extensive usage of mmap.
   # See: https://github.com/grafana/mimir/issues/2466
-  container_memory_rss{container="ingester"}
+  container_memory_rss{container=~"(ingester|mimir-write|mimir-backend)"}
     /
-  ( container_spec_memory_limit_bytes{container="ingester"} > 0 )
+  ( container_spec_memory_limit_bytes{container=~"(ingester|mimir-write|mimir-backend)"} > 0 )
 ) > 0.65
 EOT
 
@@ -474,7 +607,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      message     = "Instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirallocatingtoomuchmemory"
     }
   }
 
@@ -485,9 +619,9 @@ EOT
 (
   # We use RSS instead of working set memory because of the ingester's extensive usage of mmap.
   # See: https://github.com/grafana/mimir/issues/2466
-  container_memory_rss{container="ingester"}
+  container_memory_rss{container=~"(ingester|mimir-write|mimir-backend)"}
     /
-  ( container_spec_memory_limit_bytes{container="ingester"} > 0 )
+  ( container_spec_memory_limit_bytes{container=~"(ingester|mimir-write|mimir-backend)"} > 0 )
 ) > 0.8
 EOT
 
@@ -498,7 +632,8 @@ EOT
     }
 
     annotations = {
-      message = "Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirallocatingtoomuchmemory"
+      message     = "Instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
     }
   }
 }
@@ -524,7 +659,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% write (push) errors."
+      message     = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% write (push) errors."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulertoomanyfailedpushes"
     }
   }
 
@@ -546,7 +682,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors while evaluating rules."
+      message     = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% errors while evaluating rules."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulertoomanyfailedqueries"
     }
   }
 
@@ -568,7 +705,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% missed iterations for the rule group {{ $labels.rule_group }}."
+      message     = "Mimir Ruler {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is experiencing {{ printf \"%.2f\" $value }}% missed iterations for the rule group {{ $labels.rule_group }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulermissedevaluations"
     }
   }
 
@@ -587,7 +725,31 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Rulers in {{ $labels.cluster }}/{{ $labels.namespace }} are experiencing errors when checking the ring for rule group ownership."
+      message     = "Mimir Rulers in {{ $labels.cluster }}/{{ $labels.namespace }} are experiencing errors when checking the ring for rule group ownership."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulerfailedringcheck"
+    }
+  }
+
+  rule {
+    alert = "MimirRulerRemoteEvaluationFailing"
+
+    expr = <<EOT
+100 * (
+sum by (cluster, namespace) (rate(cortex_request_duration_seconds_count{route="/httpgrpc.HTTP/Handle", status_code=~"5..", job=~".*/(ruler-query-frontend.*)"}[5m]))
+  /
+sum by (cluster, namespace) (rate(cortex_request_duration_seconds_count{route="/httpgrpc.HTTP/Handle", job=~".*/(ruler-query-frontend.*)"}[5m]))
+) > 1
+EOT
+
+    for = "5m"
+
+    labels = {
+      severity = "warning"
+    }
+
+    annotations = {
+      message     = "Mimir rulers in {{ $labels.cluster }}/{{ $labels.namespace }} are failing to perform {{ printf \"%.2f\" $value }}% of remote evaluations through the ruler-query-frontend."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrulerremoteevaluationfailing"
     }
   }
 }
@@ -597,7 +759,7 @@ resource "mimir_rule_group_alerting" "gossip_alerts" {
 
   rule {
     alert = "MimirGossipMembersMismatch"
-    expr  = "avg by (cluster, namespace) (memberlist_client_cluster_members_count) != sum by (cluster, namespace) (up{job=~\".+/(alertmanager|compactor|distributor|ingester.*|querier.*|ruler|ruler-querier.*|store-gateway.*|cortex|mimir)\"})"
+    expr  = "avg by (cluster, namespace) (memberlist_client_cluster_members_count) != sum by (cluster, namespace) (up{job=~\".+/(alertmanager|compactor|distributor|ingester.*|querier.*|ruler|ruler-querier.*|store-gateway.*|cortex|mimir|mimir-write.*|mimir-read.*|mimir-backend.*)\"})"
     for   = "15m"
 
     labels = {
@@ -605,7 +767,8 @@ resource "mimir_rule_group_alerting" "gossip_alerts" {
     }
 
     annotations = {
-      message = "Mimir instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} sees incorrect number of gossip members."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirgossipmembersmismatch"
+      message     = "Mimir instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} sees incorrect number of gossip members."
     }
   }
 }
@@ -631,7 +794,8 @@ EOT
     }
 
     annotations = {
-      message = "Too much memory being used by {{ $labels.namespace }}/{{ $labels.pod }} - bump memory limit."
+      message     = "Too much memory being used by {{ $labels.namespace }}/{{ $labels.pod }} - bump memory limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#etcdallocatingtoomuchmemory"
     }
   }
 
@@ -653,7 +817,8 @@ EOT
     }
 
     annotations = {
-      message = "Too much memory being used by {{ $labels.namespace }}/{{ $labels.pod }} - bump memory limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#etcdallocatingtoomuchmemory"
+      message     = "Too much memory being used by {{ $labels.namespace }}/{{ $labels.pod }} - bump memory limit."
     }
   }
 }
@@ -671,7 +836,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to read tenant configurations from storage."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to read tenant configurations from storage."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagersyncconfigsfailing"
     }
   }
 
@@ -685,7 +851,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is unable to check tenants ownership via the ring."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is unable to check tenants ownership via the ring."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerringcheckfailing"
     }
   }
 
@@ -699,7 +866,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to merge partial state changes received from a replica."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to merge partial state changes received from a replica."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerpartialstatemergefailing"
     }
   }
 
@@ -713,7 +881,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to replicating partial state to its replicas."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is failing to replicating partial state to its replicas."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerreplicationfailing"
     }
   }
 
@@ -727,7 +896,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is unable to persist full state snaphots to remote storage."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} is unable to persist full state snaphots to remote storage."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerpersiststatefailing"
     }
   }
 
@@ -740,7 +910,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} was unable to obtain some initial state when starting up."
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} was unable to obtain some initial state when starting up."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerinitialsyncfailed"
     }
   }
 
@@ -760,7 +931,8 @@ EOT
     }
 
     annotations = {
-      message = "Alertmanager {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      message     = "Alertmanager {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerallocatingtoomuchmemory"
     }
   }
 
@@ -780,7 +952,31 @@ EOT
     }
 
     annotations = {
-      message = "Alertmanager {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      message     = "Alertmanager {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerallocatingtoomuchmemory"
+    }
+  }
+
+  rule {
+    alert = "MimirAlertmanagerInstanceHasNoTenants"
+
+    expr = <<EOT
+# Alert on alertmanager instances in microservices mode that own no tenants,
+min by(cluster, namespace, pod) (cortex_alertmanager_tenants_owned{pod=~"(.*mimir-)?alertmanager.*"}) == 0
+# but only if other instances of the same cell do have tenants assigned.
+and on (cluster, namespace)
+max by(cluster, namespace) (cortex_alertmanager_tenants_owned) > 0
+EOT
+
+    for = "1h"
+
+    labels = {
+      severity = "warning"
+    }
+
+    annotations = {
+      message     = "Mimir alertmanager {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} owns no tenants."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerinstancehasnotenants"
     }
   }
 }
@@ -792,9 +988,9 @@ resource "mimir_rule_group_alerting" "mimir_blocks_alerts" {
     alert = "MimirIngesterHasNotShippedBlocks"
 
     expr = <<EOT
-(min by(cluster, namespace, pod) (time() - thanos_objstore_bucket_last_successful_upload_time{job=~".+/ingester.*"}) > 60 * 60 * 4)
+(min by(cluster, namespace, pod) (time() - thanos_shipper_last_successful_upload_time) > 60 * 60 * 4)
 and
-(max by(cluster, namespace, pod) (thanos_objstore_bucket_last_successful_upload_time{job=~".+/ingester.*"}) > 0)
+(max by(cluster, namespace, pod) (thanos_shipper_last_successful_upload_time) > 0)
 and
 # Only if the ingester has ingested samples over the last 4h.
 (max by(cluster, namespace, pod) (max_over_time(cluster_namespace_pod:cortex_ingester_ingested_samples_total:rate1m[4h])) > 0)
@@ -813,7 +1009,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not shipped any block in the last 4 hours."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not shipped any block in the last 4 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterhasnotshippedblocks"
     }
   }
 
@@ -821,7 +1018,7 @@ EOT
     alert = "MimirIngesterHasNotShippedBlocksSinceStart"
 
     expr = <<EOT
-(max by(cluster, namespace, pod) (thanos_objstore_bucket_last_successful_upload_time{job=~".+/ingester.*"}) == 0)
+(max by(cluster, namespace, pod) (thanos_shipper_last_successful_upload_time) == 0)
 and
 (max by(cluster, namespace, pod) (max_over_time(cluster_namespace_pod:cortex_ingester_ingested_samples_total:rate1m[4h])) > 0)
 EOT
@@ -833,7 +1030,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not shipped any block in the last 4 hours."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not shipped any block in the last 4 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterhasnotshippedblockssincestart"
     }
   }
 
@@ -853,7 +1051,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has compacted a block {{ $value | humanizeDuration }} ago but it hasn't been successfully uploaded to the storage yet."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterhasunshippedblocks"
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has compacted a block {{ $value | humanizeDuration }} ago but it hasn't been successfully uploaded to the storage yet."
     }
   }
 
@@ -867,7 +1066,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to compact TSDB head."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to compact TSDB head."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbheadcompactionfailed"
     }
   }
 
@@ -880,7 +1080,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to truncate TSDB head."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to truncate TSDB head."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbheadtruncationfailed"
     }
   }
 
@@ -893,7 +1094,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to create TSDB checkpoint."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to create TSDB checkpoint."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbcheckpointcreationfailed"
     }
   }
 
@@ -906,7 +1108,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to delete TSDB checkpoint."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to delete TSDB checkpoint."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbcheckpointdeletionfailed"
     }
   }
 
@@ -919,7 +1122,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to truncate TSDB WAL."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to truncate TSDB WAL."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbwaltruncationfailed"
     }
   }
 
@@ -932,7 +1136,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} got a corrupted TSDB WAL."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} got a corrupted TSDB WAL."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbwalcorrupted"
     }
   }
 
@@ -946,7 +1151,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to write to TSDB WAL."
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to write to TSDB WAL."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbwalwritesfailed"
     }
   }
 
@@ -966,7 +1172,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Querier {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully scanned the bucket since {{ $value | humanizeDuration }}."
+      message     = "Mimir Querier {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully scanned the bucket since {{ $value | humanizeDuration }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirquerierhasnotscanthebucket"
     }
   }
 
@@ -993,7 +1200,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Queries in {{ $labels.cluster }}/{{ $labels.namespace }} are refetching series from different store-gateways (because of missing blocks) for the {{ printf \"%.0f\" $value }}% of queries."
+      message     = "Mimir Queries in {{ $labels.cluster }}/{{ $labels.namespace }} are refetching series from different store-gateways (because of missing blocks) for the {{ printf \"%.0f\" $value }}% of queries."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirquerierhighrefetchrate"
     }
   }
 
@@ -1013,7 +1221,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir store-gateway {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully synched the bucket since {{ $value | humanizeDuration }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirstoregatewayhasnotsyncthebucket"
+      message     = "Mimir store-gateway {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully synched the bucket since {{ $value | humanizeDuration }}."
     }
   }
 
@@ -1027,7 +1236,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir store-gateway {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not syncing any blocks for any tenant."
+      message     = "Mimir store-gateway {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not syncing any blocks for any tenant."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirstoregatewaynosyncedtenants"
     }
   }
 
@@ -1040,7 +1250,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir bucket index for tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not been updated since {{ $value | humanizeDuration }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirbucketindexnotupdated"
+      message     = "Mimir bucket index for tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not been updated since {{ $value | humanizeDuration }}."
     }
   }
 
@@ -1054,7 +1265,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has {{ $value }} partial blocks."
+      message     = "Mimir tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has {{ $value }} partial blocks."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirtenanthaspartialblocks"
     }
   }
 }
@@ -1064,15 +1276,22 @@ resource "mimir_rule_group_alerting" "mimir_compactor_alerts" {
 
   rule {
     alert = "MimirCompactorHasNotSuccessfullyCleanedUpBlocks"
-    expr  = "(time() - cortex_compactor_block_cleanup_last_successful_run_timestamp_seconds > 60 * 60 * 6)"
-    for   = "1h"
+
+    expr = <<EOT
+# The "last successful run" metric is updated even if the compactor owns no tenants,
+# so this alert correctly doesn't fire if compactor has nothing to do.
+(time() - cortex_compactor_block_cleanup_last_successful_run_timestamp_seconds > 60 * 60 * 6)
+EOT
+
+    for = "1h"
 
     labels = {
       severity = "critical"
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully cleaned up blocks in the last 6 hours."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully cleaned up blocks in the last 6 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullycleanedupblocks"
     }
   }
 
@@ -1080,6 +1299,8 @@ resource "mimir_rule_group_alerting" "mimir_compactor_alerts" {
     alert = "MimirCompactorHasNotSuccessfullyRunCompaction"
 
     expr = <<EOT
+# The "last successful run" metric is updated even if the compactor owns no tenants,
+# so this alert correctly doesn't fire if compactor has nothing to do.
 (time() - cortex_compactor_last_successful_run_timestamp_seconds > 60 * 60 * 24)
 and
 (cortex_compactor_last_successful_run_timestamp_seconds > 0)
@@ -1088,19 +1309,26 @@ EOT
     for = "1h"
 
     labels = {
-      severity = "critical"
       reason   = "in-last-24h"
+      severity = "critical"
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not run compaction in the last 24 hours."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not run compaction in the last 24 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullyruncompaction"
     }
   }
 
   rule {
     alert = "MimirCompactorHasNotSuccessfullyRunCompaction"
-    expr  = "cortex_compactor_last_successful_run_timestamp_seconds == 0"
-    for   = "1d"
+
+    expr = <<EOT
+# The "last successful run" metric is updated even if the compactor owns no tenants,
+# so this alert correctly doesn't fire if compactor has nothing to do.
+cortex_compactor_last_successful_run_timestamp_seconds == 0
+EOT
+
+    for = "1d"
 
     labels = {
       reason   = "since-startup"
@@ -1108,13 +1336,14 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not run compaction in the last 24 hours."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not run compaction in the last 24 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullyruncompaction"
     }
   }
 
   rule {
     alert = "MimirCompactorHasNotSuccessfullyRunCompaction"
-    expr  = "increase(cortex_compactor_runs_failed_total[2h]) >= 2"
+    expr  = "increase(cortex_compactor_runs_failed_total{reason!=\"shutdown\"}[2h]) >= 2"
 
     labels = {
       reason   = "consecutive-failures"
@@ -1122,7 +1351,8 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} failed to run 2 consecutive compactions."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullyruncompaction"
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} failed to run 2 consecutive compactions."
     }
   }
 
@@ -1130,9 +1360,13 @@ EOT
     alert = "MimirCompactorHasNotUploadedBlocks"
 
     expr = <<EOT
-(time() - thanos_objstore_bucket_last_successful_upload_time{component="compactor"} > 60 * 60 * 24)
+(time() - (max by(cluster, namespace, pod) (thanos_objstore_bucket_last_successful_upload_time{component="compactor"})) > 60 * 60 * 24)
 and
-(thanos_objstore_bucket_last_successful_upload_time{component="compactor"} > 0)
+(max by(cluster, namespace, pod) (thanos_objstore_bucket_last_successful_upload_time{component="compactor"}) > 0)
+and
+# Only if some compactions have started. We don't want to fire this alert if the compactor has nothing to do
+# (e.g. there are more replicas than required because running as part of mimir-backend).
+(sum by(cluster, namespace, pod) (rate(cortex_compactor_group_compaction_runs_started_total[24h])) > 0)
 EOT
 
     for = "15m"
@@ -1142,27 +1376,37 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not uploaded any block in the last 24 hours."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not uploaded any block in the last 24 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotuploadedblocks"
     }
   }
 
   rule {
     alert = "MimirCompactorHasNotUploadedBlocks"
-    expr  = "thanos_objstore_bucket_last_successful_upload_time{component=\"compactor\"} == 0"
-    for   = "1d"
+
+    expr = <<EOT
+(max by(cluster, namespace, pod) (thanos_objstore_bucket_last_successful_upload_time{component="compactor"}) == 0)
+and
+# Only if some compactions have started. We don't want to fire this alert if the compactor has nothing to do
+# (e.g. there are more replicas than required because running as part of mimir-backend).
+(sum by(cluster, namespace, pod) (rate(cortex_compactor_group_compaction_runs_started_total[24h])) > 0)
+EOT
+
+    for = "1d"
 
     labels = {
       severity = "critical"
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not uploaded any block in the last 24 hours."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not uploaded any block in the last 24 hours."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotuploadedblocks"
     }
   }
 
   rule {
     alert = "MimirCompactorSkippedBlocksWithOutOfOrderChunks"
-    expr  = "increase(cortex_compactor_blocks_marked_for_no_compaction_total{component=\"compactor\", reason=\"block-index-out-of-order-chunk\"}[5m]) > 0"
+    expr  = "increase(cortex_compactor_blocks_marked_for_no_compaction_total{reason=\"block-index-out-of-order-chunk\"}[5m]) > 0"
     for   = "1m"
 
     labels = {
@@ -1170,20 +1414,56 @@ EOT
     }
 
     annotations = {
-      message = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has found and ignored blocks with out of order chunks."
+      message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has found and ignored blocks with out of order chunks."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorskippedblockswithoutoforderchunks"
     }
   }
 }
 
-resource "mimir_rule_group_alerting" "mimir_autoscaling_querier" {
-  name = "mimir_autoscaling_querier"
+resource "mimir_rule_group_alerting" "mimir_autoscaling" {
+  name = "mimir_autoscaling"
 
   rule {
-    alert = "MimirQuerierAutoscalerNotActive"
+    alert = "MimirAutoscalerNotActive"
 
     expr = <<EOT
-kube_horizontalpodautoscaler_status_condition{horizontalpodautoscaler=~"(keda-hpa-querier)|(keda-hpa-ruler-querier)",condition="ScalingActive",status="false"}
-* on(cluster, namespace) group_left max by(cluster, namespace) (cortex_build_info)
+(
+    kube_horizontalpodautoscaler_status_condition{condition="ScalingActive",status="false"}
+    # Match only Mimir namespaces.
+    * on(cluster, namespace) group_left max by(cluster, namespace) (cortex_build_info)
+    # Add "metric" label.
+    + on(cluster, namespace, horizontalpodautoscaler) group_right label_replace(kube_horizontalpodautoscaler_spec_target_metric*0, "metric", "$1", "metric_name", "(.+)")
+    > 0
+)
+# Alert only if the scaling metric exists and is > 0. If the KEDA ScaledObject is configured to scale down 0,
+# then HPA ScalingActive may be false when expected to run 0 replicas. In this case, the scaling metric exported
+# by KEDA could not exist at all or being exposed with a value of 0.
+and on (cluster, namespace, metric)
+(label_replace(keda_metrics_adapter_scaler_metrics_value, "namespace", "$0", "exported_namespace", ".+") > 0)
+EOT
+
+    for = "1h"
+
+    labels = {
+      severity = "critical"
+    }
+
+    annotations = {
+      message     = "The Horizontal Pod Autoscaler (HPA) {{ $labels.horizontalpodautoscaler }} in {{ $labels.namespace }} is not active."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirautoscalernotactive"
+    }
+  }
+
+  rule {
+    alert = "MimirAutoscalerKedaFailing"
+
+    expr = <<EOT
+(
+    # Find KEDA scalers reporting errors.
+    label_replace(rate(keda_metrics_adapter_scaler_errors[5m]), "namespace", "$1", "exported_namespace", "(.*)")
+    # Match only Mimir namespaces.
+    * on(cluster, namespace) group_left max by(cluster, namespace) (cortex_build_info)
+)
 > 0
 EOT
 
@@ -1194,7 +1474,8 @@ EOT
     }
 
     annotations = {
-      message = "The Horizontal Pod Autoscaler (HPA) {{ $labels.horizontalpodautoscaler }} in {{ $labels.namespace }} is not active."
+      message     = "The Keda ScaledObject {{ $labels.scaledObject }} in {{ $labels.namespace }} is experiencing errors."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirautoscalerkedafailing"
     }
   }
 }
@@ -1212,7 +1493,8 @@ resource "mimir_rule_group_alerting" "mimir_continuous_test" {
     }
 
     annotations = {
-      message = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because writes are failing."
+      message     = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because writes are failing."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircontinuoustestnotrunningonwrites"
     }
   }
 
@@ -1226,7 +1508,8 @@ resource "mimir_rule_group_alerting" "mimir_continuous_test" {
     }
 
     annotations = {
-      message = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because queries are failing."
+      message     = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because queries are failing."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircontinuoustestnotrunningonreads"
     }
   }
 
@@ -1239,7 +1522,8 @@ resource "mimir_rule_group_alerting" "mimir_continuous_test" {
     }
 
     annotations = {
-      message = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} failed when asserting query results."
+      message     = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} failed when asserting query results."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircontinuoustestfailed"
     }
   }
 }

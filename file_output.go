@@ -41,7 +41,7 @@ func SetupOutput(output string, overwriteExisting bool) (io.Writer, CloseFunc) {
 		}
 
 	} else {
-		log.Debug().Msg("outputting HCL to Stdout")
+		log.Debug().Msg("outputting to Stdout")
 		w = os.Stdout
 		closeFn = noOpCloser
 

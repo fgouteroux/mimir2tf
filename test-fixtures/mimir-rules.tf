@@ -532,6 +532,8 @@ resource "mimir_rule_group_recording" "mimir_scaling_rules" {
     record = "cluster_namespace_deployment:actual_replicas:count"
 
     expr = <<EOT
+# Convenience rule to get the number of replicas for both a deployment and a statefulset.
+# Multi-zone deployments are grouped together removing the "zone-X" suffix.
 sum by (cluster, namespace, deployment) (
   label_replace(
     kube_deployment_spec_replicas,
@@ -698,6 +700,8 @@ EOT
     record = "cluster_namespace_deployment:kube_pod_container_resource_requests_cpu_cores:sum"
 
     expr = <<EOT
+# Convenience rule to get the CPU request for both a deployment and a statefulset.
+# Multi-zone deployments are grouped together removing the "zone-X" suffix.
 # This recording rule is made compatible with the breaking changes introduced in kube-state-metrics v2
 # that remove resource metrics, ref:
 # - https://github.com/kubernetes/kube-state-metrics/blob/master/CHANGELOG.md#v200-alpha--2020-09-16
@@ -741,6 +745,9 @@ EOT
     record = "cluster_namespace_deployment_reason:required_replicas:count"
 
     expr = <<EOT
+# Jobs should be sized to their CPU usage.
+# We do this by comparing 99th percentile usage over the last 24hrs to
+# their current provisioned #replicas and resource requests.
 ceil(
   cluster_namespace_deployment:actual_replicas:count
     *
@@ -759,6 +766,8 @@ EOT
     record = "cluster_namespace_deployment:container_memory_usage_bytes:sum"
 
     expr = <<EOT
+# Convenience rule to get the Memory utilization for both a deployment and a statefulset.
+# Multi-zone deployments are grouped together removing the "zone-X" suffix.
 sum by (cluster, namespace, deployment) (
   label_replace(
     label_replace(
@@ -777,6 +786,8 @@ EOT
     record = "cluster_namespace_deployment:kube_pod_container_resource_requests_memory_bytes:sum"
 
     expr = <<EOT
+# Convenience rule to get the Memory request for both a deployment and a statefulset.
+# Multi-zone deployments are grouped together removing the "zone-X" suffix.
 # This recording rule is made compatible with the breaking changes introduced in kube-state-metrics v2
 # that remove resource metrics, ref:
 # - https://github.com/kubernetes/kube-state-metrics/blob/master/CHANGELOG.md#v200-alpha--2020-09-16
@@ -820,6 +831,9 @@ EOT
     record = "cluster_namespace_deployment_reason:required_replicas:count"
 
     expr = <<EOT
+# Jobs should be sized to their Memory usage.
+# We do this by comparing 99th percentile usage over the last 24hrs to
+# their current provisioned #replicas and resource requests.
 ceil(
   cluster_namespace_deployment:actual_replicas:count
     *
