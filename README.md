@@ -11,6 +11,18 @@ The converted `.tf` files are suitable for use with the [Terraform Mimir Provide
 
 Download Binary from GitHub [releases](https://github.com/fgouteroux/mimir2tf/releases/latest) page.
 
+## Usage
+
+```
+Usage of mimir2tf:
+  -d, --debug                enable debug output
+  -f, --filepath string      file or directory that contains the YAML configuration to convert. Use "-" to read from stdin (default "-")
+  -o, --output string        file or directory where Terraform config will be written (default "-")
+  -x, --overwrite-existing   allow overwriting existing output file(s)
+  -r, --reverse              Reverse mode (hcl to yaml)
+  -F, --tf12format           Use Terraform 0.12 formatter
+  -v, --version              Print mimir2tf version
+```
 
 ## YAML to HCL
 
@@ -21,7 +33,7 @@ $ mimir2tf -f test-fixtures/rules.yaml
 
 resource "mimir_rule_group_alerting" "example" {
   name      = "example"
-  namespace = "my_namespace"
+  namespace = "default"
 
   rule {
     alert = "HighRequestLatency"
@@ -40,7 +52,7 @@ resource "mimir_rule_group_alerting" "example" {
 
 resource "mimir_rule_group_recording" "mimir_ingester_rules" {
   name      = "mimir_ingester_rules"
-  namespace = "my_namespace"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_pod:cortex_ingester_ingested_samples_total:rate1m"

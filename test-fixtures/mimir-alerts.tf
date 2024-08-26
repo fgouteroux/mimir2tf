@@ -1,5 +1,6 @@
 resource "mimir_rule_group_alerting" "mimir_alerts" {
-  name = "mimir_alerts"
+  name      = "mimir_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirIngesterUnhealthy"
@@ -54,8 +55,8 @@ EOT
     }
 
     annotations = {
-      message     = "{{ $labels.job }} {{ $labels.route }} is experiencing {{ printf \"%.2f\" $value }}s 99th percentile latency."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirrequestlatency"
+      message     = "{{ $labels.job }} {{ $labels.route }} is experiencing {{ printf \"%.2f\" $value }}s 99th percentile latency."
     }
   }
 
@@ -225,8 +226,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirmemorymapareastoohigh"
       message     = "{{ $labels.job }}/{{ $labels.pod }} has a number of mmap-ed areas close to the limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirmemorymapareastoohigh"
     }
   }
 
@@ -333,7 +334,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "mimir_instance_limits_alerts" {
-  name = "mimir_instance_limits_alerts"
+  name      = "mimir_instance_limits_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirIngesterReachingSeriesLimit"
@@ -422,8 +424,8 @@ EOT
     }
 
     annotations = {
-      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterreachingtenantslimit"
+      message     = "Ingester {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its tenant limit."
     }
   }
 
@@ -442,8 +444,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirreachingtcpconnectionslimit"
       message     = "Mimir instance {{ $labels.job }}/{{ $labels.pod }} has reached {{ $value | humanizePercentage }} of its TCP connections limit for {{ $labels.protocol }} protocol."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirreachingtcpconnectionslimit"
     }
   }
 
@@ -472,7 +474,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "mimir-rollout-alerts" {
-  name = "mimir-rollout-alerts"
+  name      = "mimir-rollout-alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirRolloutStuck"
@@ -548,14 +551,15 @@ EOT
     }
 
     annotations = {
-      message     = "Rollout operator is not reconciling the rollout group {{ $labels.rollout_group }} in {{ $labels.cluster }}/{{ $labels.namespace }}."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#rolloutoperatornotreconciling"
+      message     = "Rollout operator is not reconciling the rollout group {{ $labels.rollout_group }} in {{ $labels.cluster }}/{{ $labels.namespace }}."
     }
   }
 }
 
 resource "mimir_rule_group_alerting" "mimir-provisioning" {
-  name = "mimir-provisioning"
+  name      = "mimir-provisioning"
+  namespace = "default"
 
   rule {
     alert = "MimirProvisioningTooManyActiveSeries"
@@ -632,14 +636,15 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirallocatingtoomuchmemory"
       message     = "Instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is using too much memory."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirallocatingtoomuchmemory"
     }
   }
 }
 
 resource "mimir_rule_group_alerting" "ruler_alerts" {
-  name = "ruler_alerts"
+  name      = "ruler_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirRulerTooManyFailedPushes"
@@ -755,7 +760,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "gossip_alerts" {
-  name = "gossip_alerts"
+  name      = "gossip_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirGossipMembersMismatch"
@@ -767,14 +773,15 @@ resource "mimir_rule_group_alerting" "gossip_alerts" {
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirgossipmembersmismatch"
       message     = "Mimir instance {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} sees incorrect number of gossip members."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirgossipmembersmismatch"
     }
   }
 }
 
 resource "mimir_rule_group_alerting" "etcd_alerts" {
-  name = "etcd_alerts"
+  name      = "etcd_alerts"
+  namespace = "default"
 
   rule {
     alert = "EtcdAllocatingTooMuchMemory"
@@ -817,14 +824,15 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#etcdallocatingtoomuchmemory"
       message     = "Too much memory being used by {{ $labels.namespace }}/{{ $labels.pod }} - bump memory limit."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#etcdallocatingtoomuchmemory"
     }
   }
 }
 
 resource "mimir_rule_group_alerting" "alertmanager_alerts" {
-  name = "alertmanager_alerts"
+  name      = "alertmanager_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirAlertmanagerSyncConfigsFailing"
@@ -910,8 +918,8 @@ resource "mimir_rule_group_alerting" "alertmanager_alerts" {
     }
 
     annotations = {
-      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} was unable to obtain some initial state when starting up."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiralertmanagerinitialsyncfailed"
+      message     = "Mimir Alertmanager {{ $labels.job }}/{{ $labels.pod }} was unable to obtain some initial state when starting up."
     }
   }
 
@@ -982,7 +990,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "mimir_blocks_alerts" {
-  name = "mimir_blocks_alerts"
+  name      = "mimir_blocks_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirIngesterHasNotShippedBlocks"
@@ -1051,8 +1060,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterhasunshippedblocks"
       message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has compacted a block {{ $value | humanizeDuration }} ago but it hasn't been successfully uploaded to the storage yet."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringesterhasunshippedblocks"
     }
   }
 
@@ -1094,8 +1103,8 @@ EOT
     }
 
     annotations = {
-      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to create TSDB checkpoint."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimiringestertsdbcheckpointcreationfailed"
+      message     = "Mimir Ingester {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} is failing to create TSDB checkpoint."
     }
   }
 
@@ -1221,8 +1230,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirstoregatewayhasnotsyncthebucket"
       message     = "Mimir store-gateway {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not successfully synched the bucket since {{ $value | humanizeDuration }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirstoregatewayhasnotsyncthebucket"
     }
   }
 
@@ -1250,8 +1259,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirbucketindexnotupdated"
       message     = "Mimir bucket index for tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has not been updated since {{ $value | humanizeDuration }}."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirbucketindexnotupdated"
     }
   }
 
@@ -1265,14 +1274,15 @@ EOT
     }
 
     annotations = {
-      message     = "Mimir tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has {{ $value }} partial blocks."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimirtenanthaspartialblocks"
+      message     = "Mimir tenant {{ $labels.user }} in {{ $labels.cluster }}/{{ $labels.namespace }} has {{ $value }} partial blocks."
     }
   }
 }
 
 resource "mimir_rule_group_alerting" "mimir_compactor_alerts" {
-  name = "mimir_compactor_alerts"
+  name      = "mimir_compactor_alerts"
+  namespace = "default"
 
   rule {
     alert = "MimirCompactorHasNotSuccessfullyCleanedUpBlocks"
@@ -1309,8 +1319,8 @@ EOT
     for = "1h"
 
     labels = {
-      reason   = "in-last-24h"
       severity = "critical"
+      reason   = "in-last-24h"
     }
 
     annotations = {
@@ -1351,8 +1361,8 @@ EOT
     }
 
     annotations = {
-      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullyruncompaction"
       message     = "Mimir Compactor {{ $labels.pod }} in {{ $labels.cluster }}/{{ $labels.namespace }} failed to run 2 consecutive compactions."
+      runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircompactorhasnotsuccessfullyruncompaction"
     }
   }
 
@@ -1421,7 +1431,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "mimir_autoscaling" {
-  name = "mimir_autoscaling"
+  name      = "mimir_autoscaling"
+  namespace = "default"
 
   rule {
     alert = "MimirAutoscalerNotActive"
@@ -1481,7 +1492,8 @@ EOT
 }
 
 resource "mimir_rule_group_alerting" "mimir_continuous_test" {
-  name = "mimir_continuous_test"
+  name      = "mimir_continuous_test"
+  namespace = "default"
 
   rule {
     alert = "MimirContinuousTestNotRunningOnWrites"
@@ -1493,8 +1505,8 @@ resource "mimir_rule_group_alerting" "mimir_continuous_test" {
     }
 
     annotations = {
-      message     = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because writes are failing."
       runbook_url = "https://grafana.com/docs/mimir/latest/operators-guide/mimir-runbooks/#mimircontinuoustestnotrunningonwrites"
+      message     = "Mimir continuous test {{ $labels.test }} in {{ $labels.cluster }}/{{ $labels.namespace }} is not effectively running because writes are failing."
     }
   }
 

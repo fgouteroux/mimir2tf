@@ -1,5 +1,6 @@
 resource "mimir_rule_group_recording" "mimir_api_1" {
-  name = "mimir_api_1"
+  name      = "mimir_api_1"
+  namespace = "default"
 
   rule {
     record = "cluster_job:cortex_request_duration_seconds:99quantile"
@@ -33,7 +34,8 @@ resource "mimir_rule_group_recording" "mimir_api_1" {
 }
 
 resource "mimir_rule_group_recording" "mimir_api_2" {
-  name = "mimir_api_2"
+  name      = "mimir_api_2"
+  namespace = "default"
 
   rule {
     record = "cluster_job_route:cortex_request_duration_seconds:99quantile"
@@ -67,7 +69,8 @@ resource "mimir_rule_group_recording" "mimir_api_2" {
 }
 
 resource "mimir_rule_group_recording" "mimir_api_3" {
-  name = "mimir_api_3"
+  name      = "mimir_api_3"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job_route:cortex_request_duration_seconds:99quantile"
@@ -101,7 +104,8 @@ resource "mimir_rule_group_recording" "mimir_api_3" {
 }
 
 resource "mimir_rule_group_recording" "mimir_querier_api" {
-  name = "mimir_querier_api"
+  name      = "mimir_querier_api"
+  namespace = "default"
 
   rule {
     record = "cluster_job:cortex_querier_request_duration_seconds:99quantile"
@@ -195,7 +199,8 @@ resource "mimir_rule_group_recording" "mimir_querier_api" {
 }
 
 resource "mimir_rule_group_recording" "mimir_cache" {
-  name = "mimir_cache"
+  name      = "mimir_cache"
+  namespace = "default"
 
   rule {
     record = "cluster_job_method:cortex_memcache_request_duration_seconds:99quantile"
@@ -289,7 +294,8 @@ resource "mimir_rule_group_recording" "mimir_cache" {
 }
 
 resource "mimir_rule_group_recording" "mimir_storage" {
-  name = "mimir_storage"
+  name      = "mimir_storage"
+  namespace = "default"
 
   rule {
     record = "cluster_job:cortex_kv_request_duration_seconds:99quantile"
@@ -323,7 +329,8 @@ resource "mimir_rule_group_recording" "mimir_storage" {
 }
 
 resource "mimir_rule_group_recording" "mimir_queries" {
-  name = "mimir_queries"
+  name      = "mimir_queries"
+  namespace = "default"
 
   rule {
     record = "cluster_job:cortex_query_frontend_retries:99quantile"
@@ -387,7 +394,8 @@ resource "mimir_rule_group_recording" "mimir_queries" {
 }
 
 resource "mimir_rule_group_recording" "mimir_ingester_queries" {
-  name = "mimir_ingester_queries"
+  name      = "mimir_ingester_queries"
+  namespace = "default"
 
   rule {
     record = "cluster_job:cortex_ingester_queried_series:99quantile"
@@ -481,7 +489,8 @@ resource "mimir_rule_group_recording" "mimir_ingester_queries" {
 }
 
 resource "mimir_rule_group_recording" "mimir_received_samples" {
-  name = "mimir_received_samples"
+  name      = "mimir_received_samples"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job:cortex_distributor_received_samples:rate5m"
@@ -490,7 +499,8 @@ resource "mimir_rule_group_recording" "mimir_received_samples" {
 }
 
 resource "mimir_rule_group_recording" "mimir_exemplars_in" {
-  name = "mimir_exemplars_in"
+  name      = "mimir_exemplars_in"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job:cortex_distributor_exemplars_in:rate5m"
@@ -499,7 +509,8 @@ resource "mimir_rule_group_recording" "mimir_exemplars_in" {
 }
 
 resource "mimir_rule_group_recording" "mimir_received_exemplars" {
-  name = "mimir_received_exemplars"
+  name      = "mimir_received_exemplars"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job:cortex_distributor_received_exemplars:rate5m"
@@ -508,7 +519,8 @@ resource "mimir_rule_group_recording" "mimir_received_exemplars" {
 }
 
 resource "mimir_rule_group_recording" "mimir_exemplars_ingested" {
-  name = "mimir_exemplars_ingested"
+  name      = "mimir_exemplars_ingested"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job:cortex_ingester_ingested_exemplars:rate5m"
@@ -517,7 +529,8 @@ resource "mimir_rule_group_recording" "mimir_exemplars_ingested" {
 }
 
 resource "mimir_rule_group_recording" "mimir_exemplars_appended" {
-  name = "mimir_exemplars_appended"
+  name      = "mimir_exemplars_appended"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_job:cortex_ingester_tsdb_exemplar_exemplars_appended:rate5m"
@@ -526,7 +539,8 @@ resource "mimir_rule_group_recording" "mimir_exemplars_appended" {
 }
 
 resource "mimir_rule_group_recording" "mimir_scaling_rules" {
-  name = "mimir_scaling_rules"
+  name      = "mimir_scaling_rules"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_deployment:actual_replicas:count"
@@ -564,8 +578,8 @@ ceil(
 EOT
 
     labels = {
-      deployment = "distributor"
       reason     = "sample_rate"
+      deployment = "distributor"
     }
   }
 
@@ -580,8 +594,8 @@ ceil(
 EOT
 
     labels = {
-      deployment = "distributor"
       reason     = "sample_rate_limits"
+      deployment = "distributor"
     }
   }
 
@@ -636,8 +650,8 @@ ceil(
 EOT
 
     labels = {
-      deployment = "ingester"
       reason     = "active_series_limits"
+      deployment = "ingester"
     }
   }
 
@@ -850,7 +864,8 @@ EOT
 }
 
 resource "mimir_rule_group_recording" "mimir_alertmanager_rules" {
-  name = "mimir_alertmanager_rules"
+  name      = "mimir_alertmanager_rules"
+  namespace = "default"
 
   rule {
     record = "cluster_job_pod:cortex_alertmanager_alerts:sum"
@@ -904,7 +919,8 @@ resource "mimir_rule_group_recording" "mimir_alertmanager_rules" {
 }
 
 resource "mimir_rule_group_recording" "mimir_ingester_rules" {
-  name = "mimir_ingester_rules"
+  name      = "mimir_ingester_rules"
+  namespace = "default"
 
   rule {
     record = "cluster_namespace_pod:cortex_ingester_ingested_samples_total:rate1m"

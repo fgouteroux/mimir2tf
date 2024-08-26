@@ -1,3 +1,4 @@
+namespace: default
 groups:
 - name: mimir_api_1
   rules:
